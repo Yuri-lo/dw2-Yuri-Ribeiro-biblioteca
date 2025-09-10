@@ -28,12 +28,27 @@ function renderCards(){
   const subset = livros.slice(start, start+perPage);
   const container = document.getElementById('cards');
   container.innerHTML = '';
-  subset.forEach(l => {
-    const div = document.createElement('div');
-    div.className='card';
-    div.innerHTML = `<h4>${escapeHtml(l.titulo)}</h4><div>${escapeHtml(l.autor)} — ${l.ano}</div><div>Status: ${l.status}</div><div style="margin-top:8px"><button data-id="${l.id}" class="edit">Editar</button> <button data-id="${l.id}" class="del">Apagar</button> <button data-id="${l.id}" class="loan">Emprestar/Devolver</button></div>`;
-    container.appendChild(div);
-  });
+    if(subset.length === 0){
+      container.innerHTML = '<div class="empty">Nenhum livro encontrado.</div>';
+    } else {
+      subset.forEach(l => {
+        const div = document.createElement('div');
+        div.className='card';
+        div.innerHTML = `
+          <div class="card-body">
+            <h4 class="card-title">${escapeHtml(l.titulo)}</h4>
+            <div class="card-meta">Autor: <span class="autor">${escapeHtml(l.autor)}</span> — Ano: <span class="ano">${l.ano}</span></div>
+            <div class="card-status">Status: <span class="badge ${l.status}">${escapeHtml(l.status)}</span></div>
+            ${l.data_emprestimo ? `<div class="card-loan">Emprestado em: ${new Date(l.data_emprestimo).toLocaleString()}</div>` : ''}
+            <div class="card-footer">
+              <button data-id="${l.id}" class="edit">Editar</button>
+              <button data-id="${l.id}" class="del">Apagar</button>
+              <button data-id="${l.id}" class="loan">Emprestar/Devolver</button>
+            </div>
+          </div>`;
+        container.appendChild(div);
+      });
+    }
   document.getElementById('pageInfo').textContent = `${page}`;
   attachCardHandlers();
 }
@@ -99,6 +114,9 @@ function populateFilters(){
 const modal = document.getElementById('modal');
 const newBtn = document.getElementById('newBtn');
 if(newBtn) newBtn.addEventListener('click', ()=>{ openModal(); })
+
+// Ctrl+N also opens the new book modal
+window.addEventListener('keydown', (e)=>{ if(e.ctrlKey && e.key.toLowerCase()==='n'){ e.preventDefault(); openModal(); } })
 
 function openModal(livro){
   document.getElementById('modalTitle').textContent = livro? 'Editar Livro' : 'Novo Livro';
@@ -211,3 +229,67 @@ function populateModalGenres(){
 // init
 ensureSortControls();
 fetchLivros();
+
+// --- Assistente local (heurístico) ---
+const assistantBtn = document.getElementById('assistantBtn');
+const assistantModal = document.getElementById('assistantModal');
+const assistantInput = document.getElementById('assistantInput');
+const assistantResults = document.getElementById('assistantResults');
+const assistantClose = document.getElementById('assistantClose');
+const assistantAsk = document.getElementById('assistantAsk');
+
+
+assistantBtn?.addEventListener('click', ()=>{ assistantModal.showModal(); setTimeout(()=>assistantInput?.focus(),50); });
+assistantClose?.addEventListener('click', ()=> assistantModal.close());
+
+assistantAsk?.addEventListener('click', ()=> runAssistant());
+assistantInput?.addEventListener('keyup', (e)=>{ if(e.key==='Enter') runAssistant(); })
+
+// ensure focus on first input when opening new-book modal
+function openModal(livro){
+  document.getElementById('modalTitle').textContent = livro? 'Editar Livro' : 'Novo Livro';
+  document.getElementById('titulo').value = livro?.titulo || '';
+  document.getElementById('autor').value = livro?.autor || '';
+  document.getElementById('ano').value = livro?.ano || '';
+  document.getElementById('genero').value = livro?.genero || '';
+  document.getElementById('isbn').value = livro?.isbn || '';
+  document.getElementById('status').value = livro?.status || 'disponivel';
+  // store editing id on dialog dataset
+  modal.dataset.editing = livro?.id ? String(livro.id) : '';
+  populateModalGenres();
+  modal.showModal();
+  setTimeout(()=>document.getElementById('titulo')?.focus(),50);
+}
+
+function runAssistant(){
+  const q = (assistantInput.value||'').trim().toLowerCase();
+  assistantResults.innerHTML = '';
+  if(!q){ assistantResults.innerHTML = '<div class="assistant-result muted">Escreva algo.</div>'; return }
+  // intent: recommend by genre
+  if(q.startsWith('recomende') || q.startsWith('recomenda')){
+    const parts = q.split(' ');
+    const genre = parts[1] || '';
+    const matches = livros.filter(l=> (l.genero||'').toLowerCase().includes(genre));
+    if(matches.length===0) assistantResults.innerHTML = '<div class="assistant-result muted">Nenhuma recomendação encontrada.</div>';
+    else assistantResults.innerHTML = matches.slice(0,6).map(m=>`<div class="assistant-result"><strong>${escapeHtml(m.titulo)}</strong> — ${escapeHtml(m.autor)} <span class="assistant-highlight">${m.genero}</span></div>`).join('');
+    return;
+  }
+  // intent: buscar
+  if(q.startsWith('buscar') || q.startsWith('procure') || q.startsWith('buscar por')){
+    const term = q.replace(/^(buscar|procure|buscar por)\s*/,'');
+    const matches = livros.filter(l=> (l.titulo||'').toLowerCase().includes(term) || (l.autor||'').toLowerCase().includes(term));
+    if(matches.length===0) assistantResults.innerHTML = '<div class="assistant-result muted">Nenhum livro corresponde à busca.</div>';
+    else assistantResults.innerHTML = matches.map(m=>`<div class="assistant-result"><strong>${escapeHtml(m.titulo)}</strong><br/><small>${escapeHtml(m.autor)} — ${m.ano}</small></div>`).join('');
+    return;
+  }
+  // intent: resumo (very small heuristic)
+  if(q.startsWith('resuma') || q.startsWith('resumo')){
+    const title = q.replace(/^(resuma|resumo)\s*/,'');
+    const book = livros.find(l=> (l.titulo||'').toLowerCase()===title);
+    if(!book){ assistantResults.innerHTML = '<div class="assistant-result muted">Livro não encontrado para resumo.</div>'; return }
+    assistantResults.innerHTML = `<div class="assistant-result"><strong>Resumo sugerido</strong><div style="margin-top:6px">Resumo breve gerado localmente para <em>${escapeHtml(book.titulo)}</em>: obra de ${escapeHtml(book.autor)} publicada em ${book.ano}.</div></div>`;
+    return;
+  }
+  // fallback: simple QA
+  assistantResults.innerHTML = '<div class="assistant-result muted">Comando não reconhecido. Tente: "recomende <gênero>", "buscar <termo>", "resuma <título>"</div>';
+}

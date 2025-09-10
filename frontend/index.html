@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>Biblioteca Escolar</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+		<header class="header">
+			<div class="container">
+						<div class="brand">
+							<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2" fill="#ffffff" opacity="0.06"/><path d="M4 20V6a1 1 0 0 1 1-1h14v15" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+							<span>Biblioteca Escolar</span>
+						</div>
+				<div class="search"><input id="searchInput" placeholder="Buscar por título ou autor"/></div>
+						<div class="actions">
+							<button id="newBtn">Novo Livro (Alt+N)</button>
+							<button id="assistantBtn" aria-haspopup="dialog">Assistente</button>
+						</div>
+			</div>
+		</header>
+	<div class="layout">
+		<aside class="sidebar">
+			<h3>Filtros</h3>
+			<label>Gênero<select id="filterGenero"><option value="">Todos</option><option>Infantil</option><option>Romance</option><option>Tecnologia</option><option>Fantasia</option></select></label>
+			<label>Ano<select id="filterAno"><option value="">Todos</option><option>2021</option><option>2020</option><option>2019</option><option>2018</option></select></label>
+			<label>Status<select id="filterStatus"><option value="">Todos</option><option value="disponivel">disponível</option><option value="emprestado">emprestado</option></select></label>
+			<div class="export"><button id="exportCsv">Exportar CSV</button> <button id="exportJson">Exportar JSON</button></div>
+		</aside>
+		<main class="main-list">
+			<div id="cards" class="cards"></div>
+			<div class="pager"><button id="prevPage">◀</button> <span id="pageInfo">1</span> <button id="nextPage">▶</button></div>
+		</main>
+	</div>
+
+	<dialog id="modal" class="modal">
+			<form id="bookForm" method="dialog" onsubmit="return false;">
+				<h3 id="modalTitle">Novo Livro</h3>
+				<label>Título<input id="titulo" required/></label>
+				<label>Autor<input id="autor" required/></label>
+				<label>Ano<input id="ano" type="number" required min="1900" max="2099"/></label>
+				<label>Gênero<select id="genero" required></select></label>
+				<label>ISBN<input id="isbn"/></label>
+				<label>Status<select id="status"><option value="disponivel">disponível</option><option value="emprestado">emprestado</option></select></label>
+				<menu>
+					<button id="cancelBtn" type="button">Cancelar</button>
+					<button id="saveBtn" type="button">Salvar</button>
+				</menu>
+			</form>
+	</dialog>
+
+		<dialog id="assistantModal" class="modal" aria-label="Assistente de catálogo">
+			<form method="dialog" onsubmit="return false;">
+				<h3>Assistente</h3>
+				<p class="muted">Peça recomendações, busque por título/autor/ano ou peça um resumo. Exemplos: "recomende tecnologia", "buscar Python", "resuma O Pequeno Príncipe"</p>
+				<input id="assistantInput" placeholder="Escreva sua pergunta" />
+				<div id="assistantResults" style="margin-top:12px;max-height:320px;overflow:auto"></div>
+						<menu>
+							<button id="assistantClose" type="button">Fechar</button>
+							<button id="assistantAsk" type="button">Enviar</button>
+						</menu>
+			</form>
+		</dialog>
+
+	<script src="scripts.js"></script>
+</body>
+</html>
+
